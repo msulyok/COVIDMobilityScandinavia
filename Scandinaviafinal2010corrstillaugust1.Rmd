@@ -90,10 +90,6 @@ data <- read_csv("Scandinaviadata1010.csv", col_types = cols(Date = col_date(for
 data$Country.Region<-factor(data$Country.Region)
 data<-data[,-1]
 
-############subset it to the first wave of the pandemics##########
-library(dplyr)
-data<-data %>%
-  filter(date<= "2020-08-01")
 
 
 #####visualization
@@ -371,7 +367,7 @@ gam.check(fitwithout)
 
 plot(fitwithout)
 
-plot_model(fitwithout)
+plot_model(fitwithout, title="Daily incident deaths per 1 million")
 tab_model(fitwithout)
 
 
