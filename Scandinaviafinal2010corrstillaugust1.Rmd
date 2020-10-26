@@ -1,0 +1,524 @@
+---
+title: "Scandinaviafinal"
+author: "Sulyok"
+date: "October 8, 2020"
+output: word_document
+---
+
+```{r echo=TRUE}
+library(readr)
+library(ggplot2)
+#######mobility data
+#gmr <- read_csv("Global_Mobility_Report(3).csv", col_types = cols(date #= col_date(format = "%Y-%m-%d")))
+
+
+#library(data.table)
+#library(ggplot2)
+
+######### Loading country data
+
+#countries <- fread("http://download.geonames.org/export/dump/countryInf#o.txt", skip = "ISO3", na.strings = "")
+#names(countries)[c(1,5, 9)] <- c("geo", "Country.Region", "Continent")
+#countries$lang <- sapply(strsplit(sapply(strsplit(countries$Languages, #","), `[`, 1), "-"), `[`, 1)
+#countries$translated <- "Coronavirus"
+
+############## Obtaining the case numbers
+
+#jhu_url <- paste0("https://raw.githubusercontent.com/CSSEGISandData/COV#ID-19/master/csse_covid_19_data/",
+ #                 "csse_covid_19_time_series/time_series_covid19_deaths#_global.csv")
+#CaseData <- fread(jhu_url, check.names = TRUE)
+#CaseData$Province.State[ CaseData$Province.State=="" ] <- #CaseData$Country.Region[ CaseData$Province.State=="" ]
+#CaseData <- melt(CaseData, id.vars = 1:4, variable.name = "Date", #variable.factor = FALSE)
+#CaseData$Date <- as.Date( substring(CaseData$Date, 2), format = #"%m.%d.%y" )
+#CaseData <- CaseData[ , .(CumCaseNumber = sum(value)), #.(Country.Region, Date)][order(Country.Region, Date)]
+#CaseData <-  CaseData[ ,.(date = Date[-1], CumCaseNumber = #CumCaseNumber[-1], IncCaseNumber = diff(CumCaseNumber)),
+ #                      .(Country.Region)]
+
+#CaseData[Country.Region=="US"]$Country.Region <- "United States"
+#CaseData <- merge(CaseData,countries[,c("Country.Region", "geo", #"Continent")])
+#CaseData$country_region<-CaseData$Country.Region
+
+#CaseData$IncCaseNumber<-ifelse(CaseData$IncCaseNumber<0, 0, #CaseData$IncCaseNumber )
+#write.csv(CaseData, "CaseNumbersdeaths0610.csv")
+#levels(factor(gmr$country_region))
+#levels(factor(CaseData$country_region))
+
+
+###stringency
+
+#stringency<-fread("https://raw.githubusercontent.com/OxCGRT/covid-polic#y-tracker/master/data/OxCGRT_latest.csv")
+#stringency$Date<-as.Date(as.character(stringency$Date), "%Y%m%d")
+#stringency<-stringency[,c(1,5,35)]
+#stringency$Country.Region<-factor(stringency$CountryName)
+#stringency$date<-stringency$Date
+#write.csv(stringency, "stringency0610.csv") 
+
+#allmerged<-merge(gmr, CaseData, by=c("country_region", "date"))
+#all<-allmerged
+#all$NumDate <- as.numeric(all$date)-min(as.numeric(all$date))
+#data<- subset(all, is.na(all$sub_region_1)==TRUE)
+#data$IncCaseNumber<-ifelse(data$IncCaseNumber<0, 0, data$IncCaseNumber #)
+
+
+#data<-data[-c(1,3:8, 18)]
+#summary(data)
+#data<-na.omit(data)
+
+
+###scandinavia
+
+
+
+#data<-subset(data, data$Country.Region=="Sweden" | #data$Country.Region=="Norway" 
+ #            | data$Country.Region=="Denmark" | #data$Country.Region=="Finland" )   
+#
+#data$IncCaseNumber<-ifelse(data$Country.Region=="Norway", #data$IncCaseNumber/5.432295, data$IncCaseNumber) 
+#data$IncCaseNumber<-ifelse(data$Country.Region=="Sweden", #data$IncCaseNumber/10.115730, data$IncCaseNumber) 
+#data$IncCaseNumber<-ifelse(data$Country.Region=="Denmark", #data$IncCaseNumber/5.797559, data$IncCaseNumber) 
+#data$IncCaseNumber<-ifelse(data$Country.Region=="Finland", #data$IncCaseNumber/5.542988, data$IncCaseNumber)
+#data$Country.Region<-factor(data$Country.Region)
+
+
+
+####add stringency
+#stringencysc<-subset(stringency, stringency$Country.Region=="Sweden" | #stringency$Country.Region=="Norway" 
+ #                    | stringency$Country.Region=="Denmark" | #stringency$Country.Region=="Finland" )   
+#summary(stringencysc)
+#data<-merge(data, stringencysc, by=c("Country.Region", "date"))
+#write.csv(data, "Scandinaviadata0910.csv")
+data <- read_csv("Scandinaviadata1010.csv", col_types = cols(Date = col_date(format = "%Y-%m-%d"), date = col_date(format = "%Y-%m-%d")))
+data$Country.Region<-factor(data$Country.Region)
+data<-data[,-1]
+
+############subset it to the first wave of the pandemics##########
+library(dplyr)
+data<-data %>%
+  filter(date<= "2020-08-01")
+
+
+#####visualization
+library(dunn.test)
+dunn.test(data$StringencyIndex, data$Country.Region)
+
+ggplot(data, aes(date, IncCaseNumber, group=Country.Region, color=Country.Region)) +geom_line()
+
+ggplot(data, aes(date, StringencyIndex, group=Country.Region, color=Country.Region)) +geom_line()
+
+ggplot(data, aes(date, retail_and_recreation_percent_change_from_baseline, group=Country.Region, color=Country.Region)) +geom_line()
+
+ggplot(data, aes(date, grocery_and_pharmacy_percent_change_from_baseline, group=Country.Region, color=Country.Region)) +geom_line()
+
+
+ggplot(data, aes(date, transit_stations_percent_change_from_baseline, group=Country.Region, color=Country.Region)) +geom_line()
+
+ggplot(data, aes(date, workplaces_percent_change_from_baseline, group=Country.Region, color=Country.Region)) +geom_line()
+
+
+########################################correlations############################
+
+######## contemp deaths correlations ################################
+
+contemp<-function(x) {
+  dat<-subset(data, data$Country.Region==x)
+  corfun<-function(y){cor.test(dat$IncCaseNumber, y, exact = FALSE, method = "spearman")$estimate}
+  cc<-as.data.frame(lapply(dat[c(3:8,15)], corfun))
+cc$Country.Region<-x
+a<-cc
+}
+
+results<-NULL
+d<-NULL
+
+for( Country.Region in unique(data$Country.Region) ) {
+ d<-contemp(Country.Region)
+ results<-rbind(results, data.frame(d))
+  }
+resultscont<-results
+resultscont
+summary(resultscont)
+write.csv(resultscont, "resultscovidcontemcorrtillaugust.csv")
+
+#####contemp pvalues
+
+contemp<-function(x) {
+  dat<-subset(data, data$Country.Region==x)
+  corfun<-function(y){cor.test(dat$IncCaseNumber, y, exact = FALSE, method = "spearman")$p.value}
+  cc<-as.data.frame(lapply(dat[c(3:8,15)], corfun))
+cc$Country.Region<-x
+a<-cc
+}
+
+results<-NULL
+d<-NULL
+
+for( Country.Region in unique(data$Country.Region) ) {
+ d<-contemp(Country.Region)
+ results<-rbind(results, data.frame(d))
+  }
+resultscontp<-results
+resultscontp
+summary(resultscontp)
+pconts<-as.vector(as.matrix(resultscontp[-8]))
+dim(pconts)<-c(4,7)
+adjustedpconts<-p.adjust(pconts, method="holm")
+dim(adjustedpconts)<-c(4,7)
+adjustedpconts
+write.csv(adjustedpconts, "adjustedpscontemp.csv")
+################################crosscorrelations##############################
+
+crosscorr<-function(x) {
+  dat<-subset(data, data$Country.Region==x)
+  ccfspear<-function(y){ ccfspearmanx <- sapply( -28:28, function(l) cor.test(y, Hmisc::Lag(dat$IncCaseNumber,l),method = "spearman", use = "complete.obs", exact=FALSE)$estimate)
+  }
+  cc<-as.data.frame(lapply(dat[c(3:8,15)], ccfspear))
+  ccabs<-abs(cc)
+a<-as.data.frame(lapply(ccabs[1:7], which.max))
+b<-as.data.frame(lapply(cc[1:7], max ))
+c<-as.data.frame(lapply(cc[1:7], min))
+e<-ifelse(abs(b)<abs(c), c, b)
+names(e) <-c("V1", "V2", "V3", "V4", "V5", "V7", "Stringrho")
+a$Country.Region<-x
+a<-data.frame(cbind(a,e))
+}
+
+results<-NULL
+d<-NULL
+
+for( Country.Region in unique(data$Country.Region) ) {
+ d<-crosscorr(Country.Region)
+ results<-rbind(results, data.frame(d))
+  }
+
+results$retail_and_recreation_percent_change_from_baseline<-results$retail_and_recreation_percent_change_from_baseline-29
+
+results$grocery_and_pharmacy_percent_change_from_baseline<- results$grocery_and_pharmacy_percent_change_from_baseline-29
+
+results$parks_percent_change_from_baseline<- results$parks_percent_change_from_baseline-29
+
+results$transit_stations_percent_change_from_baseline<-results$transit_stations_percent_change_from_baseline-29
+
+results$workplaces_percent_change_from_baseline<-results$workplaces_percent_change_from_baseline-29
+
+results$residential_percent_change_from_baseline<-results$residential_percent_change_from_baseline-29
+
+results$StringencyIndex<-results$StringencyIndex-29
+
+
+resultscross<-results
+resultscross
+summary(resultscross)
+write.csv(resultscross, "resultscovidcrosscorrtillaugust.csv")
+
+
+crosscorrfun<- function(x) {
+  datx<-subset(data, data$Country.Region==x)
+  ccfspear<-function(y){ ccfspearmanx <- sapply( -28:28, function(l) cor.test(y, Hmisc::Lag(datx$IncCaseNumber,l),method = "spearman", use = "complete.obs", exact=FALSE)$estimate )
+  plot(-28:28,ccfspearmanx,type="h", ylab="Rho", xlab="Lag in Days")
+  abline(h=0)
+  print(ccfspearmanx)
+  print(summary(ccfspearmanx))
+  which.max(abs(ccfspearmanx))-29}
+  lapply(datx[c(3:8,15)], ccfspear)
+}
+
+crosscorrfun("Sweden")
+crosscorrfun("Norway")
+crosscorrfun("Denmark")
+crosscorrfun("Finland")
+
+#########pvalues crosscorr
+crosscorr<-function(x) {
+  dat<-subset(data, data$Country.Region==x)
+  ccfspear<-function(y){ ccfspearmanx <- sapply( -28:28, function(l) cor.test(y, Hmisc::Lag(dat$IncCaseNumber,l),method = "spearman", use = "complete.obs", exact=FALSE)$p.value)
+  }
+  cc<-lapply(dat[c(3:8,15)], ccfspear)
+}
+
+results<-NULL
+d<-NULL
+
+for( Country.Region in unique(data$Country.Region) ) {
+  d<-crosscorr(Country.Region)
+  results<-rbind(results, data.frame(d))
+}
+results<-as.vector(as.matrix(results))
+resultsadj<-p.adjust(results, method="holm")
+dim(resultsadj)<-c(228, 7)
+a<-as.data.frame(resultsadj)
+colnames(a)<-c("retail and recreation", "grocery and pharmacy", "parks", "transit", "workplace", "residential", "Stringency index")
+a$country<-rep(c("Denmark", "Finland","Norway", "Sweden"),each=57)
+a$day<-rep(c(-28:28), times=4)
+a$country_lag<- with(a, paste0(country, day), collapse="-")
+a<-a[,-c(8:9)]
+write.csv(resultsadj, "crosscorrallpsadj.csv")
+
+
+rownames(a)<-a$country_lag
+a<-a[-8]
+a<-as.matrix(a)
+
+###producing crosscorr heatmap#################
+crosscorr<-function(x) {
+  dat<-subset(data, data$Country.Region==x)
+  ccfspear<-function(y){ ccfspearmanx <- sapply( -28:28, function(l) cor.test(y, Hmisc::Lag(dat$IncCaseNumber,l),method = "spearman", use = "complete.obs", exact=FALSE)$estimate)
+  }
+  cc<-lapply(dat[c(3:8,15)], ccfspear)
+}
+
+results<-NULL
+d<-NULL
+
+for( Country.Region in unique(data$Country.Region) ) {
+  d<-crosscorr(Country.Region)
+  results<-rbind(results, data.frame(d))
+}
+
+
+colnames(results)<-c("retail and recreation", "grocery and pharmacy", "parks", "transit", "workplace", "residential", "Stringency index")
+results$country<-rep(c("D", "F","N", "S"),each=57)
+results$day<-rep(c(-28:28), times=4)
+results$country_lag<- with(results, paste0(country, day), collapse="-")
+results<-results[,-c(8:9)]
+
+rownames(results)<-results$country_lag
+results<-results[-8]
+results<-as.matrix(results)
+library(ggcorrplot)
+ggcorrplot(results) 
+
+resultsden<-results[1:57, 1:7]
+aden<-a[1:57, 1:7]
+den<-ggcorrplot(resultsden, p.mat = aden, insig = "blank") +
+  ggtitle("Denmark") +
+ggsave("denmarkcross.pdf", width = 20, height = 5) 
+
+resultsfin<-results[58:114, 1:7]
+afin<-a[58:114, 1:7]
+fin<-ggcorrplot(resultsfin, p.mat = afin, insig = "blank") +
+  ggtitle("Finland") +
+ggsave("finlandcrossc.pdf", width = 20, height = 5) 
+
+
+resultsnor<-results[115:171, 1:7]
+anor<-a[115:171, 1:7]
+nor<-ggcorrplot(resultsnor, p.mat = anor, insig = "blank") +
+  ggtitle("Norway") +
+ggsave("Norwaycrossc.pdf", width = 20, height = 5) 
+
+
+resultssweden<-results[172:228, 1:7]
+aswe<-a[172:228, 1:7]
+swe<-ggcorrplot(resultssweden, p.mat = aswe, insig = "blank") +
+  ggtitle("Sweden") +
+ggsave("swedencrossc.pdf", width = 20, height = 5) 
+
+
+library(ggpubr)
+ccfplotall<-ggarrange(den, fin, nor, swe, ncol=1, nrow = 4)
+ccfplotall
+ggsave("crosscorrallheat.pdf", width = 15, height = 10) 
+ggsave("crosscorrallheat.png", width = 15, height = 10) 
+
+
+
+####modelling###############################################################
+
+data <- read_csv("Scandinaviadata1010.csv", col_types = cols(Date = col_date(format = "%Y-%m-%d"), date = col_date(format = "%Y-%m-%d")))
+data$Country.Region<-factor(data$Country.Region)
+data<-data[,-1]
+
+library(dplyr)
+datat<-data %>%
+  filter(date<= "2020-08-01")
+datav<-data %>%
+  filter(date> "2020-08-01")
+
+library(dlnm)
+
+datat$cb1 <- crossbasis(datat$grocery_and_pharmacy_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datat$Country.Region)
+datat$cb2 <- crossbasis(datat$retail_and_recreation_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datat$Country.Region)
+datat$cb4 <- crossbasis(datat$transit_stations_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datat$Country.Region)
+datat$cb5 <- crossbasis(datat$workplaces_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datat$Country.Region)
+datat$cb6 <- crossbasis(datat$residential_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datat$Country.Region)
+datat$cb7 <- crossbasis(datat$StringencyIndex , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datat$Country.Region)
+
+#make data identical to the dataset with crossbasis (deleting the first 28 observations in all countries)
+datam<-datat %>%
+  group_by(Country.Region) %>%
+  slice(-c(1:28))
+
+
+
+
+
+#change ref category?
+library(mgcv)
+
+fitplain<-gam(IncCaseNumber ~s(NumDate, by=Country.Region) + Country.Region, data=datam, family="tw")
+summary(fitplain)
+AIC(fitplain)
+gam.check(fitplain)
+
+library(sjPlot)
+plot_model(fitplain)
+tab_model(fitplain)
+
+
+fitwithout<-gam(IncCaseNumber ~s(NumDate, by=Country.Region) + s(StringencyIndex, by=Country.Region) + Country.Region, data=datam, family=Tweedie(p=1.011))
+summary(fitwithout)
+AIC(fitwithout)
+gam.check(fitwithout)
+
+plot(fitwithout)
+
+plot_model(fitwithout)
+tab_model(fitwithout)
+
+
+fit <- gam(IncCaseNumber~s(NumDate, by=Country.Region) + s(StringencyIndex, by=Country.Region) +s(retail_and_recreation_percent_change_from_baseline, by=Country.Region)
+           + s(grocery_and_pharmacy_percent_change_from_baseline, by=Country.Region)
+           + s(transit_stations_percent_change_from_baseline, by=Country.Region) 
+           + s(workplaces_percent_change_from_baseline, by=Country.Region)
+           + s(residential_percent_change_from_baseline, by=Country.Region)
+           + Country.Region, data=datam, family=Tweedie(p=1.011))
+summary(fit)
+AIC(fit)
+gam.check(fit)
+plot(fit)
+
+plot_model(fit)
+tab_model(fit)
+
+
+fitcb<-gam(IncCaseNumber~s(NumDate, by=Country.Region) + cb1  + cb2 + cb4 + cb5 + cb6 + cb7 + Country.Region, data = datat, select=TRUE, family=Tweedie(p=1.011))
+summary(fitcb) 
+AIC(fitcb)
+gam.check(fitcb)
+plot(fitcb)
+
+plot_model(fitcb)
+tab_model(fitcb)
+
+
+##stringency distributed lag
+fitcbstr<-gam(IncCaseNumber~s(NumDate, by=Country.Region) + cb7 + Country.Region, data = datat, select=TRUE, family=Tweedie(p=1.011))
+summary(fitcbstr) 
+AIC(fitcbstr)
+gam.check(fitcbstr)
+plot(fitcbstr)
+
+plot_model(fitcbstr)
+tab_model(fitcbstr)
+
+
+
+AIC(fitplain)
+AIC(fitwithout)
+AIC(fit)
+AIC(fitcb)
+AIC(fitcbstr)
+
+
+#preparing data for the validation
+
+datav$cb1 <- crossbasis(datav$grocery_and_pharmacy_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datav$Country.Region)
+datav$cb2 <- crossbasis(datav$retail_and_recreation_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datav$Country.Region)
+datav$cb4 <- crossbasis(datav$transit_stations_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datav$Country.Region)
+datav$cb5 <- crossbasis(datav$workplaces_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datav$Country.Region)
+datav$cb6 <- crossbasis(datav$residential_percent_change_from_baseline , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datav$Country.Region)
+datav$cb7 <- crossbasis(datav$StringencyIndex , lag=28, argvar=list(fun="bs"),arglag=list(df=5), group=datav$Country.Region)
+
+
+dataval<-datav %>%
+  group_by(Country.Region) %>%
+  slice(-c(1:28))
+
+
+dataval$pred<-predict.gam(fitplain, dataval, type="response")
+dataval$pred1<-predict.gam(fitwithout, dataval, type="response")
+dataval$pred2<-predict.gam(fit, dataval, type="response")
+dataval$predcb<-predict.gam(fitcb, dataval, type="response")
+dataval$predcbstr<-predict.gam(fitcbstr, dataval, type="response")
+
+
+
+dataval<-na.omit(dataval)
+pred1<-predict.gam(fitplain, dataval, type="response")
+pred<-predict(fitplain, dataval, type="response",  interval = "response")
+pred1<-predict.gam(fitwithout, dataval, type="response")
+pred2<-predict.gam(fit, dataval, type="response")
+predcb<-predict.gam(fitcb, dataval, type="response")
+predcbstr<-predict.gam(fitcbstr, dataval, type="response")
+
+
+
+
+
+#predcb<-predcb[!is.na(predcb)]
+
+
+RMSE <- function(pred, obs){
+  sqrt(mean((pred - obs)^2))
+}
+
+
+RMSE(dataval$pred, dataval$IncCaseNumber) 
+RMSE(dataval$pred1, dataval$IncCaseNumber) 
+RMSE(dataval$pred2, dataval$IncCaseNumber) 
+RMSE(dataval$predcb, dataval$IncCaseNumber) 
+RMSE(dataval$predcbstr, dataval$IncCaseNumber) 
+
+
+library(forecast)
+dm.test(pred-dataval$IncCaseNumber, pred1-dataval$IncCaseNumber)
+dm.test(pred-dataval$IncCaseNumber, pred2-dataval$IncCaseNumber)
+dm.test(pred-dataval$IncCaseNumber, predcb-dataval$IncCaseNumber)
+dm.test(pred1-dataval$IncCaseNumber, pred2-dataval$IncCaseNumber)
+dm.test(pred1-dataval$IncCaseNumber, predcb-dataval$IncCaseNumber)
+dm.test(pred2-dataval$IncCaseNumber, predcb-dataval$IncCaseNumber)
+dm.test(pred2-dataval$IncCaseNumber, predcbstr-dataval$IncCaseNumber)
+
+library(tidyr)
+datavallong<-gather(dataval, reportedornot, number, c(22,10))
+
+ggplot(datavallong, aes(date, number, group=reportedornot, colour=reportedornot)) +
+  geom_line() + geom_smooth() +
+  ggtitle("Predicted vs. Reported daily deaths per million (19/JUN/2020 to 07/OCT/2020)") +
+  xlab("Date") + ylab("Daily deaths per million") + xlab(" ") + ylab(" ") +  
+  theme(legend.title=element_blank()) + xlab(" ") + 
+  theme(axis.text.x=element_text(colour="black")) +
+  theme(axis.text.y=element_text(colour="black")) + facet_wrap(.~Country.Region)
+
+datavallong<-gather(dataval, reportedornot, number, c(23,10))
+
+ggplot(datavallong, aes(date, number, group=reportedornot, colour=reportedornot)) +
+  geom_line() + geom_smooth() +
+  ggtitle("Predicted vs. Reported daily deaths per million (19/JUN/2020 to 07/OCT/2020)") +
+  xlab("Date") + ylab("Daily deaths per million") + xlab(" ") + ylab(" ") +  
+  theme(legend.title=element_blank()) + xlab(" ") + 
+  theme(axis.text.x=element_text(colour="black")) +
+  theme(axis.text.y=element_text(colour="black")) + facet_wrap(.~Country.Region)
+
+datavallong<-gather(dataval, reportedornot, number, c(24,10))
+
+ggplot(datavallong, aes(date, number, group=reportedornot, colour=reportedornot)) +
+  geom_line() + geom_smooth() +
+  ggtitle("Predicted vs. Reported daily deaths per million (19/JUN/2020 to 07/OCT/2020)") +
+  xlab("Date") + ylab("Daily deaths per million") + xlab(" ") + ylab(" ") +  
+  theme(legend.title=element_blank()) + xlab(" ") + 
+  theme(axis.text.x=element_text(colour="black")) +
+  theme(axis.text.y=element_text(colour="black")) + facet_wrap(.~Country.Region)
+
+datavallong<-gather(dataval, reportedornot, number, c(25,10))
+
+ggplot(datavallong, aes(date, number, group=reportedornot, colour=reportedornot)) +
+  geom_line() + geom_smooth() +
+  ggtitle("Predicted vs. Reported daily deaths per million (19/JUN/2020 to 07/OCT/2020)") +
+  xlab("Date") + ylab("Daily deaths per million") + xlab(" ") + ylab(" ") +  
+  theme(legend.title=element_blank()) + xlab(" ") + 
+  theme(axis.text.x=element_text(colour="black")) +
+  theme(axis.text.y=element_text(colour="black")) + facet_wrap(.~Country.Region)
+
+
+```
+
